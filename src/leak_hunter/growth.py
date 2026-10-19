@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import gc
 import inspect
+import os
 import tracemalloc
 from collections import Counter
 from collections.abc import Awaitable, Callable, Iterable
@@ -73,6 +74,14 @@ class GrowthReport:
     def leaked(self) -> bool:
         return bool(self.growing)
 
+    @property
+    def suspect(self) -> str | None:
+        """The type to trace next: the first one defined in a module, not a builtin like `list`."""
+        for growth in self.growing:
+            if "." in growth.type_name:
+                return growth.type_name
+        return self.growing[0].type_name if self.growing else None
+
     def format(self, limit: int = 10) -> str:
         lines = []
         if not self.leaked:
@@ -83,19 +92,32 @@ class GrowthReport:
             lines.append(f"Objects accumulating across calls (2 windows x {self.iterations} calls):")
             for g in shown:
                 lines.append(
-                    f"  {g.type_name:<{width}}  +{g.per_call:g} per call"
+                    f"  {g.type_name:<{width}}  +{_number(g.per_call)} per call"
                     f"  (window 1: {g.first_window:+d}, window 2: {g.second_window:+d})"
                 )
             if len(self.growing) > limit:
                 lines.append(f"  ... and {len(self.growing) - limit} more types")
         if self.allocations:
             # Covers what the object count cannot: bytes, str and other untracked objects.
-            lines.append("Allocation sites still holding memory allocated in window 2:")
+            lines.append(f"Allocation sites still holding memory from the last {self.iterations} calls:")
             for a in self.allocations:
-                lines.append(f"  {a.location}  +{a.size_bytes / 1024:.1f} KiB in {a.blocks:+d} blocks")
-        if self.leaked:
-            lines.append(f"Next: why_alive({self.growing[0].type_name!r}) shows what keeps them alive.")
+                per_call = a.size_bytes / self.iterations / 1024
+                lines.append(f"  {a.location}  +{_number(per_call)} KiB per call  ({a.blocks:+d} blocks)")
+        if self.suspect is not None:
+            lines.append("Next, see what keeps them alive:")
+            lines.append(f"  leak-hunter why <module:function that runs many calls> {self.suspect}")
+            lines.append(f"  or in Python: why_alive({self.suspect!r})")
         return "\n".join(lines)
+
+
+def _number(value: float) -> str:
+    return f"{value:.2f}".rstrip("0").rstrip(".")
+
+
+def _short_path(path: str) -> str:
+    """Relative to the working directory when inside it, so report lines stay readable."""
+    relative = os.path.relpath(path)
+    return path if relative.startswith("..") else relative
 
 
 class LeakError(AssertionError):
@@ -176,9 +198,8 @@ class _Windows:
         for stat in after.compare_to(before, "lineno"):
             if stat.size_diff > 0 and stat.count_diff > 0:
                 frame = stat.traceback[0]
-                found.append(
-                    AllocationGrowth(f"{frame.filename}:{frame.lineno}", stat.size_diff, stat.count_diff)
-                )
+                location = f"{_short_path(frame.filename)}:{frame.lineno}"
+                found.append(AllocationGrowth(location, stat.size_diff, stat.count_diff))
             if len(found) == limit:
                 break
         return tuple(found)

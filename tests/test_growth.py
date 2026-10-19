@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 
 import pytest
 
@@ -109,9 +110,38 @@ def test_allocation_tracing_catches_leaks_the_object_count_cannot_see() -> None:
 
     assert not report.leaked
     assert report.allocations
-    assert report.allocations[0].location.startswith(__file__)
+    assert report.allocations[0].location.startswith(os.path.relpath(__file__))
     assert report.allocations[0].size_bytes >= 10 * 4096
-    assert "Allocation sites" in report.format()
+    assert "KiB per call" in report.format()
+
+
+def test_next_step_names_the_projects_own_type_not_a_builtin() -> None:
+    kept: list[list[Session]] = []
+
+    def leaks_two_types() -> None:
+        kept.append([Session()])  # a list and a Session per call
+
+    report = measure_growth(leaks_two_types, iterations=10)
+    names = {g.type_name for g in report.growing}
+
+    assert {"list", f"{__name__}.Session"} <= names
+    assert report.suspect == f"{__name__}.Session"
+    assert f"leak-hunter why <module:function that runs many calls> {__name__}.Session" in report.format()
+
+
+def test_per_call_numbers_are_rounded() -> None:
+    calls = 0
+
+    def three_every_other_call() -> None:
+        nonlocal calls
+        calls += 1
+        if calls % 2:
+            _sessions.extend(Session() for _ in range(3))
+
+    report = measure_growth(three_every_other_call, iterations=7, warmup=0)
+
+    # Odd calls only: window 2 (calls 8-14) adds 3 x 3 = 9 objects over 7 calls.
+    assert f"{__name__}.Session  +1.29 per call" in report.format()
 
 
 def test_rejects_zero_iterations() -> None:

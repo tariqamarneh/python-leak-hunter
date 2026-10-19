@@ -53,7 +53,9 @@ Then classify with `leak_hunter.diagnose(samples)` (load the logged lines into
   clients built per request (step 4, pattern 1).
 
 Size it: **MB per unit of work** (per request, message, session or agent turn), not just MB per
-hour. Compare process types: if a web process grows 10x faster per request than a worker
+hour. If the cost per unit *rises* with traffic (each request retains more than the last, and
+latency creeps up too), each new request is touching everything retained so far: think
+listeners or callbacks that all run on every event. Compare process types: if a web process grows 10x faster per request than a worker
 running the same library code, the leak is in the path only the web process runs.
 
 Before reproducing locally, check the **exact library versions running in production**
@@ -79,10 +81,12 @@ def many_turns():
         one_turn()
 ```
 
-Run it (async functions work too):
+Run it (async functions work too). Use `--trace` from the start: the object count cannot see
+`bytes`, `bytearray`, `str`, or dicts and lists that hold only plain values, and those are
+often where the bytes are.
 
 ```bash
-leak-hunter check leak_harness:one_turn --include myapp. --iterations 30
+leak-hunter check leak_harness:one_turn --include myapp. --iterations 30 --trace
 ```
 
 The check runs the work in two windows after a warm-up and only reports types that grow in
@@ -91,9 +95,14 @@ both, so caches filling up once are not reported. Reading the result:
 - A type at **+1 per call** (or +N): that object is retained every time. Go to step 3 with it.
 - Nothing reported with `--include`: run again without it. The retained object may belong to
   a library (`langsmith.run_trees.RunTree`, `grpc...`, `httpx.Client`).
-- Still nothing, but memory grows: add `--trace`. `bytes` and `str` are invisible to the
-  object count; `--trace` lists the allocation sites still holding memory.
-- Still nothing: the growth is native or depends on real traffic patterns. See native-memory.md.
+- Allocation sites under `--trace` with no growing type: untracked data (bytes, buffers,
+  plain-value dicts) is being kept. Look at the listed lines; the KiB per call should roughly
+  match the per-unit cost from step 1.
+- Small allocation sites that disappear with a fixed input, or with `--iterations` above a
+  cache's `maxsize`, are a bounded cache filling up, not a leak. A harness that varies its
+  input (realistic) will show these at first.
+- Nothing at all: the growth is native or depends on real traffic patterns. See
+  native-memory.md.
 
 ## 3. Find what keeps it alive
 
@@ -101,7 +110,9 @@ both, so caches filling up once are not reported. Reading the result:
 leak-hunter why leak_harness:many_turns myapp.graph.CompiledGraph
 ```
 
-This traces a few instances back to a root and groups identical chains. Read the root line:
+This runs the setup once, then traces a few of the instances it created back to a root and
+groups identical chains. Prefer your own types over builtins (`list`, `dict`): `check`
+suggests the first project type it found. Read the root line:
 
 - `module X, global 'name'`: a module-level cache, registry or list is collecting them.
 - `variable v in f() at file:line`: a long-running function or loop holds them in a local.
@@ -129,14 +140,20 @@ apply its fix. Fix the cause, not the symptom:
 ## 5. Prove it and lock it
 
 1. Rerun `leak-hunter check ...`. It must report nothing for the types that grew before.
-2. Add a regression test. The `leak_check` pytest fixture is registered automatically:
+2. Add a regression test. The `leak_check` pytest fixture is registered automatically.
+   Import the unit of work from the harness, or move it into the test file:
 
    ```python
+   from leak_harness import one_turn
+
    def test_turn_does_not_leak(leak_check):
        leak_check(one_turn, include=["myapp."], iterations=30)
    ```
 
-   In an async test, use `await leak_hunter.assert_no_leak_async(one_turn)`.
+   If pytest cannot import the project package, set `pythonpath = .` in the pytest config.
+   The check runs the work warm-up + 2 x iterations times, so side effects (rows written,
+   listeners registered) add up; reset them in a fixture if other tests count them. In an
+   async test, use `await leak_hunter.assert_no_leak_async(one_turn)`.
 
 3. In production, compare MB per unit of work before and after on processes running the old
    and new code side by side over at least 30 minutes of real traffic. A flat line beats any

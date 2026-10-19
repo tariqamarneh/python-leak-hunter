@@ -49,6 +49,23 @@ def test_cli_why_finds_the_native_holder(capsys: pytest.CaptureFixture[str]) -> 
     assert "app.RunTrace  <- the object being explained" in out
 
 
+kept_lists: list[list[int]] = []
+
+
+def keep_some_lists() -> None:
+    kept_lists.extend([i] for i in range(10))
+
+
+def test_cli_why_on_a_builtin_type_traces_only_what_the_setup_created(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert main(["why", f"{__name__}:keep_some_lists", "list"]) == 0
+
+    out = capsys.readouterr().out
+    assert out.startswith("10 live list; traced 5:")
+    assert f"5 of 5 held by:\n  module {__name__}, global 'kept_lists'" in out
+
+
 def test_cli_rejects_a_bad_target() -> None:
     with pytest.raises(SystemExit, match="expected module:function"):
         main(["check", "app"])

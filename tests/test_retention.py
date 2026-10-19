@@ -119,6 +119,24 @@ def test_groups_instances_that_share_a_chain() -> None:
     assert "20 of 21 held by:" in report.format()
 
 
+class Listener:
+    def record(self) -> None:
+        pass
+
+
+_subscribers: list[object] = []
+
+
+def test_bound_methods_show_the_instance_they_keep() -> None:
+    _subscribers.append(Listener().record)
+
+    [(path, _)] = why_alive(Listener).paths
+
+    assert path.root == f"module {__name__}, global '_subscribers'"
+    assert path.steps[1] == "bound method Listener.record.__self__"
+    _subscribers.clear()
+
+
 def test_no_instances() -> None:
     report = why_alive("nowhere.Missing")
 

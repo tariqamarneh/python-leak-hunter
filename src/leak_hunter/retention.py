@@ -13,6 +13,7 @@ import re
 import sys
 import types
 from collections import Counter, deque
+from collections.abc import Collection
 from dataclasses import dataclass
 
 from .growth import type_name
@@ -60,6 +61,7 @@ def why_alive(
     *,
     samples: int = 5,
     max_nodes: int = 5_000,
+    exclude: Collection[int] = (),
 ) -> RetentionReport:
     """Explain what keeps objects alive.
 
@@ -67,6 +69,10 @@ def why_alive(
     a single object. For a type, up to `samples` instances spread across the live ones are
     traced, and identical chains are grouped, so one report covers the common case and the
     exceptions. Only objects tracked by the garbage collector can be found by type.
+
+    `exclude` is a set of object ids to skip, e.g. the instances that existed before the
+    code under test ran. That matters for builtin types: tracing "list" otherwise samples
+    arbitrary lists from all over the process.
     """
     gc.collect()  # unreachable cycles are garbage, not leaks: free them before looking
     caller = sys._getframe(1)
@@ -74,7 +80,7 @@ def why_alive(
 
     if isinstance(target, (type, str)):
         name = target if isinstance(target, str) else _qualified(target)
-        picked, total = _pick_instances(name, samples)
+        picked, total = _pick_instances(name, samples, exclude)
     else:
         name = type_name(target)
         picked = [target]
@@ -121,9 +127,9 @@ def _qualified(cls: type) -> str:
     return cls.__qualname__ if cls.__module__ == "builtins" else f"{cls.__module__}.{cls.__qualname__}"
 
 
-def _pick_instances(name: str, samples: int) -> tuple[list[object], int]:
+def _pick_instances(name: str, samples: int, exclude: Collection[int]) -> tuple[list[object], int]:
     """Up to `samples` evenly spaced instances of the named type, and how many are alive."""
-    found = [obj for obj in gc.get_objects() if type_name(obj) == name]
+    found = [obj for obj in gc.get_objects() if type_name(obj) == name and id(obj) not in exclude]
     total = len(found)
     if total <= samples:
         picked: list[object] = list(found)
@@ -233,7 +239,9 @@ def _is_ours(obj: object, ours: set[int], skip_frames: set[int]) -> bool:
 def _label(obj: object) -> str:
     if isinstance(obj, type):
         return f"class {obj.__qualname__}"
-    if isinstance(obj, (types.FunctionType, types.MethodType)):
+    if isinstance(obj, types.MethodType):
+        return f"bound method {obj.__qualname__}"
+    if isinstance(obj, types.FunctionType):
         return f"function {obj.__qualname__}"
     return type_name(obj)
 
@@ -260,6 +268,8 @@ def _how_held(holder: object, held: object) -> str:
                 if value is held:
                     return key
             return ""
+        if isinstance(holder, types.MethodType):
+            return ".__self__" if holder.__self__ is held else ".__func__"
         if isinstance(holder, types.CellType):
             return " (closure variable)"
         if isinstance(held, dict) and (isinstance(holder, type) or getattr(holder, "__dict__", None) is held):

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import gc
 import importlib
 import inspect
 import os
@@ -18,7 +19,7 @@ import sys
 from collections.abc import Callable, Sequence
 from typing import Any
 
-from .growth import awaited, measure_growth
+from .growth import awaited, measure_growth, type_name
 from .retention import why_alive
 
 
@@ -69,11 +70,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(report.format())
         return 1 if report.leaked else 0
 
-    result = _load(args.setup)()
+    setup = _load(args.setup)
+    # Only trace instances the setup created, so `why ... list` follows the leaked lists.
+    gc.collect()
+    existing = {id(obj) for obj in gc.get_objects() if type_name(obj) == args.type_name}
+    result = setup()
     if inspect.isawaitable(result):
         asyncio.run(awaited(result))
     del result
-    print(why_alive(args.type_name, samples=args.samples).format())
+    print(why_alive(args.type_name, samples=args.samples, exclude=existing).format())
     return 0
 
 
