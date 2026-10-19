@@ -1,6 +1,8 @@
 # python-leak-hunter
 
 [![CI](https://github.com/tariqamarneh/python-leak-hunter/actions/workflows/ci.yml/badge.svg)](https://github.com/tariqamarneh/python-leak-hunter/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/python-leak-hunter)](https://pypi.org/project/python-leak-hunter/)
+[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue)](https://pypi.org/project/python-leak-hunter/)
 
 Find memory leaks in long-running Python services: **what accumulates**, **what keeps it
 alive** (down to "held by a C extension"), and **a test that keeps it fixed**. It ships with an
