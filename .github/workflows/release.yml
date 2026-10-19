@@ -1,0 +1,33 @@
+name: Release
+
+# Publishes to PyPI with trusted publishing: PyPI trusts this workflow directly,
+# so no API token is stored anywhere.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to publish, e.g. v0.1.0
+        required: true
+
+jobs:
+  pypi:
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/python-leak-hunter/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+      - uses: astral-sh/setup-uv@v6
+      - name: Check the tag matches the package version
+        run: |
+          tag="${{ github.event.release.tag_name || inputs.tag }}"
+          version="$(uv version --short)"
+          test "$tag" = "v$version" || { echo "tag $tag does not match version $version"; exit 1; }
+      - run: uv build
+      - uses: pypa/gh-action-pypi-publish@release/v1

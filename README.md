@@ -4,7 +4,7 @@
 
 Find memory leaks in long-running Python services: **what accumulates**, **what keeps it
 alive** (down to "held by a C extension"), and **a test that keeps it fixed**. It ships with an
-[agent skill](skills/python-leak-hunter/SKILL.md) that teaches Claude Code, Codex and other
+[agent skill](https://github.com/tariqamarneh/python-leak-hunter/blob/main/skills/python-leak-hunter/SKILL.md) that teaches Claude Code, Codex and other
 coding agents the whole investigation, not just the tools.
 
 ```text
@@ -20,7 +20,7 @@ $ leak-hunter why harness:many_requests app.RunTrace
     -> app.RunTrace  <- the object being explained
 ```
 
-That output is from [a real grpcio reproduction](examples/grpc_cycle.py): a gRPC channel built
+That output is from [a real grpcio reproduction](https://github.com/tariqamarneh/python-leak-hunter/blob/main/examples/grpc_cycle.py): a gRPC channel built
 inside a request captures the request's `contextvars` context. When that context can reach
 the channel back, the cycle runs through C code and is never freed. In production this pinned
 whole AI-agent graphs in memory, about 2 GB every 6 hours per worker.
@@ -48,7 +48,7 @@ Then ask: *"Memory in our worker keeps growing. Find the leak."*
 ## Use it directly
 
 ```bash
-pip install "python-leak-hunter @ git+https://github.com/tariqamarneh/python-leak-hunter"
+pip install python-leak-hunter
 ```
 
 No dependencies. Python 3.10+.

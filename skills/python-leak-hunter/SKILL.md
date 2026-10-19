@@ -24,8 +24,8 @@ The `python-leak-hunter` package provides the measurements. Install it into the 
 environment as the code under investigation**, because it imports and runs that code:
 
 ```bash
-uv add --dev "python-leak-hunter @ git+https://github.com/tariqamarneh/python-leak-hunter"
-# or: pip install "python-leak-hunter @ git+https://github.com/tariqamarneh/python-leak-hunter"
+uv add --dev python-leak-hunter
+# or: pip install python-leak-hunter
 ```
 
 It has no dependencies. `psutil` is used for RSS when present.
