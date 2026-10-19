@@ -1,0 +1,15 @@
+{
+  "name": "tariqamarneh",
+  "description": "Agent skills and plugins by Tariq Amarneh.",
+  "owner": {
+    "name": "Tariq Amarneh",
+    "email": "tariqs.naser@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "python-leak-hunter",
+      "source": "./",
+      "description": "Find and fix memory leaks in long-running Python services."
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "name": "python-leak-hunter",
+  "displayName": "Python Leak Hunter",
+  "version": "0.1.1",
+  "description": "Find and fix memory leaks in long-running Python services: what accumulates, what keeps it alive (down to native code), and a test that keeps it fixed.",
+  "author": {
+    "name": "Tariq Amarneh",
+    "email": "tariqs.naser@gmail.com",
+    "url": "https://www.tariqamarneh.com"
+  },
+  "homepage": "https://github.com/tariqamarneh/python-leak-hunter",
+  "repository": "https://github.com/tariqamarneh/python-leak-hunter",
+  "license": "MIT",
+  "keywords": ["python", "memory-leak", "debugging", "profiling", "pytest", "grpc", "langgraph"],
+  "documentationUrl": "https://github.com/tariqamarneh/python-leak-hunter#readme",
+  "supportUrl": "https://github.com/tariqamarneh/python-leak-hunter/issues"
+}

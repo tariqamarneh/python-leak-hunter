@@ -32,16 +32,20 @@ The skill walks an agent through the method: confirm the growth is real, reprodu
 of work, find what accumulates, trace what holds it, fix it by pattern, then prove it and add a
 regression test. It installs the package below as needed.
 
-```bash
-git clone https://github.com/tariqamarneh/python-leak-hunter
+**Claude Code**, as a plugin (updates with `claude plugin update`):
 
-# Claude Code: for you, or for one project
-cp -r python-leak-hunter/skills/python-leak-hunter ~/.claude/skills/
-cp -r python-leak-hunter/skills/python-leak-hunter your-project/.claude/skills/
-
-# Codex: per repository
-cp -r python-leak-hunter/skills/python-leak-hunter your-project/.agents/skills/
+```text
+/plugin install python-leak-hunter --marketplace tariqamarneh/python-leak-hunter
 ```
+
+**Codex, Cursor and other agents**, with the [skills CLI](https://skills.sh):
+
+```bash
+npx skills add tariqamarneh/python-leak-hunter
+```
+
+Or copy the folder yourself: `skills/python-leak-hunter` goes in `~/.claude/skills/` or a
+project's `.claude/skills/` for Claude Code, and in a repository's `.agents/skills/` for Codex.
 
 Then ask: *"Memory in our worker keeps growing. Find the leak."*
 
