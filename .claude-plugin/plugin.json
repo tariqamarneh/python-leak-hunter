@@ -11,7 +11,17 @@
   "homepage": "https://github.com/tariqamarneh/python-leak-hunter",
   "repository": "https://github.com/tariqamarneh/python-leak-hunter",
   "license": "MIT",
-  "keywords": ["python", "memory-leak", "debugging", "profiling", "pytest", "grpc", "langgraph"],
+  "keywords": [
+    "python",
+    "memory-leak",
+    "debugging",
+    "profiling",
+    "pytest",
+    "grpc",
+    "langgraph"
+  ],
   "documentationUrl": "https://github.com/tariqamarneh/python-leak-hunter#readme",
-  "supportUrl": "https://github.com/tariqamarneh/python-leak-hunter/issues"
+  "supportUrl": "https://github.com/tariqamarneh/python-leak-hunter/issues",
+  "privacyPolicyUrl": "https://github.com/tariqamarneh/python-leak-hunter/blob/main/PRIVACY.md",
+  "termsOfServiceUrl": "https://github.com/tariqamarneh/python-leak-hunter/blob/main/LICENSE"
 }
